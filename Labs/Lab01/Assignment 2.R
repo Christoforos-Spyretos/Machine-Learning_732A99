@@ -2,7 +2,7 @@
 
 # Reading & Preparing Data
 
-parkinsons <- read.csv("Lab01/parkinsons.csv")
+parkinsons <- read.csv("Labs/Lab01/parkinsons.csv")
 
 parkinsons <- parkinsons[,-c(1:4,6)]  # deleting undesirable variables
 
@@ -37,13 +37,10 @@ test_MSE
 
 # Loglikelihood
 
-Loglikelihood <- function(param, input_data){
+Loglikelihood <- function(theta, sigma, input_data){
   
   Υ <- input_data[,1]
   X <- as.matrix(input_data[,-1])
-  k <- length(param)
-  theta <- param[1:k-1]
-  sigma <- param[k]
   n <- nrow(input_data)
 
   logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Υ-X %*% theta)^2) 
@@ -51,7 +48,7 @@ Loglikelihood <- function(param, input_data){
   return(-logl)
 }
 
-Loglikelihood( param = rep(1,17), input_data = train)
+Loglikelihood( theta = rep(1,16), sigma = 1, input_data = train)
 
 # Ridge
 
@@ -71,13 +68,13 @@ Ridge <- function(param, input_data, lamda){
   return(-logl)
 }
 
-Ridge( param = rep(1,17),input_data = train, lamda = 2)
+Ridge(param = rep(1,17),input_data = train, lamda = 2)
 
 # Ridge optimal
 
-RidgeOpt <- function(lamda){
+RidgeOpt <- function(lamda, input_data){
   
-  optimal <- optim( par = c(1:17), fn = Ridge, lamda = lamda, input_data = train ,method = "BFGS")
+  optimal <- optim( par = c(1:17), fn = Ridge, lamda = lamda, input_data = input_data ,method = "BFGS")
   
   k <- length(optimal$par)
   optimal_theta <- optimal$par[-k]
@@ -85,7 +82,7 @@ RidgeOpt <- function(lamda){
   return(optimal_theta)
 }
 
-RidgeOpt(lamda = 2)
+RidgeOpt(lamda = 2, input_data = train)
 
 # Degrees of freedom
 
@@ -104,9 +101,9 @@ df(lamda = 3,input_data = train)
 
 # Task 4
 
-theta_hat_1 <- RidgeOpt( lamda = 1)
-theta_hat_100 <- RidgeOpt( lamda = 100)
-theta_hat_1000 <- RidgeOpt( lamda = 1000)
+theta_hat_1 <- RidgeOpt( lamda = 1, input_data = train)
+theta_hat_100 <- RidgeOpt( lamda = 100, input_data = train)
+theta_hat_1000 <- RidgeOpt( lamda = 1000, input_data = train)
 
 predicted_values <- function(theta_hat, input_data){
   
@@ -140,8 +137,8 @@ MSE_100_train <- MSE(y_hat_100_train, train)
 MSE_1000_train <- MSE(y_hat_1000_train, train)
 
 MSE_1_test <- MSE(y_hat_1_test, test)
-MSE_100_test <- MSE(y_hat_100_train, test)
-MSE_1000_test <- MSE(y_hat_1000_train, test)
+MSE_100_test <- MSE(y_hat_100_test, test)
+MSE_1000_test <- MSE(y_hat_1000_test, test)
 
 
 # For linear smoothers Y_hat = S(X)Y df = trace(s)

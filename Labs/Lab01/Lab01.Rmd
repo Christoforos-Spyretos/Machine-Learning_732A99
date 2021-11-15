@@ -1,0 +1,224 @@
+---
+title: "Lab01"
+author: "Christophoros Spyretos"
+date: "11/15/2021"
+output: pdf_document
+---
+## Reading & Preparing Data
+
+We start with reading the data set and removing the variables that are not needed. 
+
+```{r}
+parkinsons <- read.csv("parkinsons.csv")
+
+parkinsons <- parkinsons[,-c(1:4,6)]  # deleting undesirable variables
+```
+
+## Task 1 (Scaling & splitting data into train & test set.)
+
+We scale and split the data into 60% training data and 40% testing data.
+
+```{r}
+data <- scale(parkinsons)
+
+n=dim(data)[1]
+set.seed(12345) 
+id=sample(1:n, floor(n*0.7)) 
+train=data.frame(data[id,])
+test=data.frame(data[-id,])
+```
+
+## Task 2 (Linear regression model & estimation of train and test MSE.)
+
+*Fitting linear regression model.*
+
+The variables that contributed significantly to the model based on the significance code of 0.001 are Jitter(Abs) with a p-value of 0.000000246, Shimmer:APQ11 with a p-value of 0.00000549, NHR with a p-value of 0.00000648, HNR with a p-value of 0.00000000000814, DFA with a p-value smaller than 0.0000000000000002 and PPE with a p-value of 0.0000000000000502.
+
+Moreover, Shimmer and Shimmer:APQ5 contributed to the model based on the significance code of 0.01 with the p-values of 0.0065 and 0.0011, respectively.
+
+Shimmer Shimmer:APQ5
+```{r}
+lrm <- lm(motor_UPDRS ~ Jitter... + Jitter.Abs. + Jitter.RAP + Jitter.PPQ5 + Jitter.DDP +
+            Shimmer + Shimmer.dB. + Shimmer.APQ3 + Shimmer.APQ5 + Shimmer.APQ11 + 
+            Shimmer.DDA + NHR + HNR + RPDE + DFA + PPE, data = train)
+
+summary(lrm)
+```
+
+*Estimating training & test MSE.*
+
+The MSE for the training data is 0.8825922, which means that the forecast of the model is closer to the actual values. The same assumptions apply for the test data with a MSE of 0.9196701.
+
+```{r}
+train_MSE <- mean((train$motor_UPDRS - predict(lrm))^2)
+train_MSE
+test_MSE <- mean((test$motor_UPDRS - predict(lrm,test))^2)
+test_MSE
+```
+
+## Task 3 (Implementing 4 functions)
+
+*Log likelihood function*
+
+```{r}
+Loglikelihood <- function(theta, sigma, input_data){
+  
+  Υ <- input_data[,1]
+  X <- as.matrix(input_data[,-1])
+  n <- nrow(input_data)
+
+  logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Υ-X %*% theta)^2) 
+  
+  return(-logl)
+}
+
+Loglikelihood( theta = rep(1,16), sigma = 1, input_data = train)
+```
+
+*Ridge function*
+
+```{r}
+Ridge <- function(param, input_data, lamda){
+  
+  Υ <- input_data[,1]
+  X <- as.matrix(input_data[,-1])
+  k <- length(param)
+  theta <- param[1:k-1]
+  sigma <- param[k]
+  n <- nrow(input_data)
+  
+  penalty <- lamda*sum(theta^2)
+  
+  logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Υ-X %*% theta)^2) + penalty
+  
+  return(-logl)
+}
+
+Ridge( param = rep(1,17),input_data = train, lamda = 2)
+```
+
+*Ridge optimal*
+
+```{r}
+RidgeOpt <- function(lamda, input_data){
+  
+  optimal <- optim( par = c(1:17), fn = Ridge, lamda = lamda, input_data = input_data ,method = "BFGS")
+  
+  k <- length(optimal$par)
+  optimal_theta <- optimal$par[-k]
+  
+  return(optimal_theta)
+}
+
+RidgeOpt(lamda = 2, input_data = train)
+```
+
+*Degrees of freedom*
+
+A TA told me that I don't need the lamda to calculate the degrees of freedom. WTF? The question wants to calculate the df for a given scalar vector. 
+
+```{r}
+df <- function(lamda, input_data){
+  
+  X <- as.matrix(input_data[,-1])
+  I <- diag(ncol(X))
+  hat_matrix <- X %*% solve(t(X) %*% X + lamda*I) %*% t(X)
+  
+  degrees_of_freedom <- sum(diag(hat_matrix))
+  
+  return(degrees_of_freedom)
+}
+
+df(lamda = 3,input_data = train)
+```
+
+## Task 4
+
+*Using function RidgeOpt to compute optimal theta parameters for lamda = 1, lamda = 100 and lamda = 1000.*
+
+```{r}
+theta_hat_1 <- RidgeOpt( lamda = 1)
+theta_hat_100 <- RidgeOpt( lamda = 100)
+theta_hat_1000 <- RidgeOpt( lamda = 1000)
+```
+
+*Using the estimating parameters to predict the motor_UPDRS values for training and test data.*
+
+```{r}
+predicted_values <- function(theta_hat, input_data){
+  
+  X <- as.matrix(input_data[,-1])
+  y_hat <- X %*% theta_hat 
+  
+  return(y_hat)
+}
+
+y_hat_1_train <- predicted_values(theta_hat_1, train)
+y_hat_100_train <- predicted_values(theta_hat_100, train)
+y_hat_1000_train  <- predicted_values(theta_hat_1000, train)
+
+y_hat_1_test <- predicted_values(theta_hat_1, test)
+y_hat_100_test <- predicted_values(theta_hat_100, test)
+y_hat_1000_test  <- predicted_values(theta_hat_1000, test)
+```
+
+*Reporting the training and test MSE values.*
+
+```{r}
+MSE <- function(Y_hat, input_data){
+  
+  Y <- input_data[,1]
+  n <- nrow(input_data)
+  
+  mse <- (1/n) * sum((Y-Y_hat)^2)
+  
+  return(mse)
+}
+
+MSE_1_train <- MSE(y_hat_1_train, train)
+MSE_100_train <- MSE(y_hat_100_train, train)
+MSE_1000_train <- MSE(y_hat_1000_train, train)
+
+MSE_1_test <- MSE(y_hat_1_test, test)
+MSE_100_test <- MSE(y_hat_100_train, test)
+MSE_1000_test <- MSE(y_hat_1000_train, test)
+```
+
+*Computing the degrees of freedom.*
+
+I am confused with that part. Does he mean to compute the degrees of freedom of the train and test? Just calculate the trace of the hat matrix? Calculate the degrees for linear smoothers Y_hat = S(X)Y df = trace(S)? What S means?
+
+```{r}
+df2 <- function(input_data){
+  
+  X <- as.matrix(input_data[,-1])
+
+  hat_matrix <- X %*% solve(t(X) %*% X) %*% t(X)
+  
+  degrees_of_freedom <- sum(diag(hat_matrix))
+  
+  return(degrees_of_freedom)
+}
+
+degrees_of_freedom_train <- df2(input_data = train)
+degrees_of_freedom_test <- df2(input_data = test)
+```
+
+# Assignment 3
+
+We start with reading in the data set and renaming the column names to make working with the data frame easier. Additionally, we change the Diabetes variable to a factor variable with two levels.
+
+```{r}
+df <- read.csv("files/pima-indians-diabetes.csv", header = FALSE)
+colnames(df) <- c("Pregnancies",
+                  "Glucose",
+                  "BloodPressure",
+                  "SkinThickness",
+                  "Insulin",
+                  "BMI",
+                  "DiabetesPedigreeFunction",
+                  "Age",
+                  "Diabetes")
+df$Diabetes <- as.factor(df$Diabetes)
+levels(df$Diabetes) <- c("No","Yes")
+```
