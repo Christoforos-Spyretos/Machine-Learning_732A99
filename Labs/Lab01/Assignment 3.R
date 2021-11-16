@@ -2,7 +2,7 @@
 
 # Reading & Preparing Data
 
-data <- read.csv("Lab01/pima-indians-diabetes.csv", header = FALSE)
+data <- read.csv("Labs/Lab01/pima-indians-diabetes.csv", header = FALSE)
 
 colnames(data) <- c("TimesPregnant", "Plasma", "Diastolic", "Triceps",
                     "Insulin", "MassIndex", "Pedigree", "Age", "Diabetes")
@@ -21,7 +21,7 @@ scatterplot
 # Task 2
 
 fit <- glm( Diabetes ~ Age + Plasma, data = data, family = binomial)
-probabilities <- predict(object = fit, newdata =  data, type = "response")
+probabilities <- predict(object = fit, newdata =  data, type = "link")
 predicted_values <- ifelse(probabilities > 0.5, "pos", "neg")
 
 data$Predict <- predicted_values
@@ -98,4 +98,38 @@ scatterplot5 <- ggplot( data = data, aes( x = Age, y = Plasma, colour = Predict2
   geom_point()
 
 scatterplot5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -2,7 +2,7 @@
 
 # Reading Data 
 
-data <- read.csv("Lab01/optdigits.csv", header = FALSE)
+data <- read.csv("Labs/Lab01/optdigits.csv", header = FALSE)
 
 # Task 1 Splitting the data into training, validation and test sets (50%/25%/25%).
 
@@ -25,7 +25,7 @@ library(kknn)
 
 knn_train <- kknn(as.factor(V65)~., train = train, test = train, k = 30, kernel = "rectangular")
 knn_valid <- kknn(as.factor(V65)~., train = valid, test = valid, k = 30, kernel = "rectangular")
-knn_test <- kknn(as.factor(V65)~., train = test, test = test, k = 30, kernel = "rectangular")
+knn_test <- kknn(as.factor(V65)~., train = train, test = test, k = 30, kernel = "rectangular")
 
 # Generating confusion matrices
 
@@ -49,7 +49,7 @@ misclass <- function(actual_val,fitted_val){
 
 misclass(train$V65, knn_train$fitted.values)
 
-misclass(test$V45, knn_test$fitted.values)
+misclass(test$V65, knn_test$fitted.values)
 
 # Task 3 Cases & Heatmap
 
@@ -84,13 +84,15 @@ k_optmimal_train <- c()
 k_optmimal_valid <- c()
 
 for (i in 1:30){ 
+  set.seed(12345)
   knn_train <-kknn(as.factor(V65)~., train=train,test=train, k = i,kernel = "rectangular")
-  knn_valid <-kknn(as.factor(V65)~., train=valid,test=valid, k = i,kernel = "rectangular")
+  knn_valid <-kknn(as.factor(V65)~., train=train,test=valid, k = i,kernel = "rectangular")
   
   k_optmimal_train[i] = 1-(sum(diag(table(train$V65, knn_train$fitted.values)))/nrow(train))
   k_optmimal_valid[i] = 1-(sum(diag(table(valid$V65, knn_valid$fitted.values)))/nrow(valid))
   
 }
+
 
 k_optmimal_train
 k_optmimal_valid
@@ -107,20 +109,36 @@ my_plot <- ggplot( data = rate) +
   ylab("Missclassification Rate ") + xlab("K") +
   scale_color_manual(name = "Data Sets", 
                      labels = c("Validation ", "Training "),
-                     values =c("#F8766D", "#00BFC4"))
+                     values =c("#F8766D", "#00BFC4")) + 
+  theme_bw() +
+  scale_alpha_continuous( breaks = 1:30)
 
 my_plot
 
 # Task 5
+cross_entropy <- list()
+for (K in 1:30) {
+  fit = kknn(as.factor(V65)~., train, valid, k=K, kernel="rectangular")
+  
+  df <- data.frame(fit$prob)
+  df$digit <- valid$V65
+  
+  entropy <- list()
+  for (i in 1:nrow(df)) { 
+    for (n in 1:10) {
+      if (df$digit[i] == n-1) {
+        entropy[[i]] = -(log(df[i, n]+ 1e-15))
+      }
+    }
+  }
+  cross_entropy[[K]] <- sum(unlist(entropy))
+}
+cross_entropy_valid <- data.frame(cross_entropy = unlist(cross_entropy), K = 1:30)
 
-
-
-
-
-
-
-
-
+ggplot(cross_entropy_valid, aes(x = K, y = cross_entropy)) + 
+  geom_point(col = "blue") + theme_bw() + 
+  labs(title = "Cross-entropy error for different Ks in KNN", y = "Cross-entropy")+
+  scale_x_continuous(breaks = 1:30)
 
 
 

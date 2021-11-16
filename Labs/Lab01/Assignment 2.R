@@ -2,19 +2,36 @@
 
 # Reading & Preparing Data
 
-parkinsons <- read.csv("Labs/Lab01/parkinsons.csv")
+data <- read.csv("Labs/Lab01/parkinsons.csv")
 
-parkinsons <- parkinsons[,-c(1:4,6)]  # deleting undesirable variables
+data <- data[,-c(1:4,6)]  # deleting the variables that we do not need.
 
 # Task 1 (Scaling & splitting data into train & test set.)
 
-data <- scale(parkinsons)
-
 n=dim(data)[1]
 set.seed(12345) 
-id=sample(1:n, floor(n*0.7)) 
+id=sample(1:n, floor(n*0.6)) 
 train=data.frame(data[id,])
 test=data.frame(data[-id,])
+
+mean_train <- numeric(ncol(train))
+sd_train <- numeric(ncol(train))
+
+for(i in 1:ncol(train)){
+  mean_train[i] <- mean(train[,i])
+  sd_train[i] <- sd(train[,i])
+}
+
+train <- data.frame(scale(train))
+
+test_new <- data.frame(matrix(nrow = nrow(test), ncol = ncol(test)))
+
+for(i in 1:ncol(train)){
+  test_new[,i] <- (test[,i] - mean_train[i])/sd_train[i]
+}
+
+test <- as.data.frame(test_new)
+colnames(test) <- colnames(train)
 
 # Task 2 (Linear regression model & estimation of train and test MSE.)
 
@@ -37,18 +54,21 @@ test_MSE
 
 # Loglikelihood
 
-Loglikelihood <- function(theta, sigma, input_data){
+Loglikelihood <- function(theta, input_data){
   
-  Υ <- input_data[,1]
+  Y <- input_data[,1]
   X <- as.matrix(input_data[,-1])
+  predicted <- X %*% theta
+  residual <- Y - predicted
+  sigma <- sd(residual)
   n <- nrow(input_data)
-
-  logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Υ-X %*% theta)^2) 
+  
+  logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Y-X %*% theta)^2) 
   
   return(-logl)
 }
 
-Loglikelihood( theta = rep(1,16), sigma = 1, input_data = train)
+Loglikelihood(theta = rep(1,16), input_data = train)
 
 # Ridge
 
@@ -56,48 +76,48 @@ Ridge <- function(param, input_data, lamda){
   
   Υ <- input_data[,1]
   X <- as.matrix(input_data[,-1])
-  k <- length(param)
-  theta <- param[1:k-1]
-  sigma <- param[k]
+  theta <- param
   n <- nrow(input_data)
   
   penalty <- lamda*sum(theta^2)
   
-  logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Υ-X %*% theta)^2) + penalty
+  logl <- Loglikelihood(theta, input_data) + penalty
   
-  return(-logl)
+  return(logl)
 }
 
-Ridge(param = rep(1,17),input_data = train, lamda = 2)
+Ridge(param = rep(1,16),input_data = train, lamda = 2)
 
 # Ridge optimal
 
 RidgeOpt <- function(lamda, input_data){
   
-  optimal <- optim( par = c(1:17), fn = Ridge, lamda = lamda, input_data = input_data ,method = "BFGS")
+  optimal <- optim(par = rep(1, times = 16), fn = Ridge,
+                   lamda = lamda, input_data = input_data ,method = "BFGS")
   
   k <- length(optimal$par)
   optimal_theta <- optimal$par[-k]
   
-  return(optimal_theta)
+  
+  return(optimal$par)
 }
 
-RidgeOpt(lamda = 2, input_data = train)
+theta <- RidgeOpt(lamda = 1, input_data = train)
 
 # Degrees of freedom
 
-df <- function(lamda, input_data){
+df <- function(input_data){
   
   X <- as.matrix(input_data[,-1])
   I <- diag(ncol(X))
-  hat_matrix <- X %*% solve(t(X) %*% X + lamda*I) %*% t(X)
+  hat_matrix <- X %*% solve(t(X) %*% X) %*% t(X)
   
   degrees_of_freedom <- sum(diag(hat_matrix))
   
   return(degrees_of_freedom)
 }
 
-df(lamda = 3,input_data = train)
+df(input_data = train)
 
 # Task 4
 
@@ -140,19 +160,5 @@ MSE_1_test <- MSE(y_hat_1_test, test)
 MSE_100_test <- MSE(y_hat_100_test, test)
 MSE_1000_test <- MSE(y_hat_1000_test, test)
 
-
-# For linear smoothers Y_hat = S(X)Y df = trace(s)
-
-df2 <- function(input_data){
-  
-  X <- as.matrix(input_data[,-1])
-
-  hat_matrix <- X %*% solve(t(X) %*% X) %*% t(X)
-  
-  degrees_of_freedom <- sum(diag(hat_matrix))
-  
-  return(degrees_of_freedom)
-}
-
-degrees_of_freedom_train <- df2(input_data = train)
-degrees_of_freedom_test <- df2(input_data = test)
+degrees_of_freedom_train <- df(input_data = train)
+degrees_of_freedom_test <- df(input_data = test)
