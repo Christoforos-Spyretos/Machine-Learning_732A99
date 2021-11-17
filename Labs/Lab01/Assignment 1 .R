@@ -24,7 +24,7 @@ test=data[id3,]
 library(kknn)
 
 knn_train <- kknn(as.factor(V65)~., train = train, test = train, k = 30, kernel = "rectangular")
-knn_valid <- kknn(as.factor(V65)~., train = valid, test = valid, k = 30, kernel = "rectangular")
+knn_valid <- kknn(as.factor(V65)~., train = train, test = valid, k = 30, kernel = "rectangular")
 knn_test <- kknn(as.factor(V65)~., train = train, test = test, k = 30, kernel = "rectangular")
 
 # Generating confusion matrices
