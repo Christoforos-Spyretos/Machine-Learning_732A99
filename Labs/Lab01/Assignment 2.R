@@ -39,7 +39,7 @@ colnames(test) <- colnames(train)
 
 lrm <- lm(motor_UPDRS ~ Jitter... + Jitter.Abs. + Jitter.RAP + Jitter.PPQ5 + Jitter.DDP +
             Shimmer + Shimmer.dB. + Shimmer.APQ3 + Shimmer.APQ5 + Shimmer.APQ11 + 
-            Shimmer.DDA + NHR + HNR + RPDE + DFA + PPE, data = train)
+            Shimmer.DDA + NHR + HNR + RPDE + DFA + PPE + 0, data = train)
 
 summary(lrm)
 
@@ -54,63 +54,44 @@ test_MSE
 
 # Loglikelihood
 
-Loglikelihood <- function(theta, input_data){
+Loglikelihood <- function(theta, sigma, input_data){
   
   Y <- input_data[,1]
   X <- as.matrix(input_data[,-1])
-  predicted <- X %*% theta
-  residual <- Y - predicted
-  sigma <- sd(residual)
   n <- nrow(input_data)
   
-  logl <- -n*log(sqrt(2*pi)*sigma) - (1/(2*(sigma^2)))*sum((Y-X %*% theta)^2) 
-  
-  return(-logl)
-}
-
-Loglikelihood(theta = rep(1,16), input_data = train)
-
-# Ridge
-
-Ridge <- function(param, input_data, lamda){
-  
-  Υ <- input_data[,1]
-  X <- as.matrix(input_data[,-1])
-  theta <- param
-  n <- nrow(input_data)
-  
-  penalty <- lamda*sum(theta^2)
-  
-  logl <- Loglikelihood(theta, input_data) + penalty
+  logl <- -n*log(sqrt(2*pi)*abs(sigma)) - (1/(2*(sigma^2)))*sum((Y-X %*% theta)^2) 
   
   return(logl)
 }
 
-Ridge(param = rep(1,16),input_data = train, lamda = 2)
+# Ridge
+
+Ridge <- function(param, input_data, lambda){
+  
+  theta <- param[-1]
+  sigma <- param[1]
+  
+  logl <- -Loglikelihood(theta, sigma, input_data) + lambda*sum(theta^2)
+  
+  return(-Loglikelihood(theta, sigma, input_data) + lambda*sum(theta^2))
+}
 
 # Ridge optimal
 
-RidgeOpt <- function(lamda, input_data){
-  
-  optimal <- optim(par = rep(1, times = 16), fn = Ridge,
-                   lamda = lamda, input_data = input_data ,method = "BFGS")
-  
-  k <- length(optimal$par)
-  optimal_theta <- optimal$par[-k]
-  
-  
+RidgeOpt <- function(lambda, input_data){
+  optimal <- optim(par = rep(1, 17), fn = Ridge, input_data = input_data, lambda = lambda, 
+                   method = "BFGS")
   return(optimal$par)
 }
 
-theta <- RidgeOpt(lamda = 1, input_data = train)
-
 # Degrees of freedom
 
-df <- function(input_data){
+df <- function(input_data, lambda=0){
   
   X <- as.matrix(input_data[,-1])
   I <- diag(ncol(X))
-  hat_matrix <- X %*% solve(t(X) %*% X) %*% t(X)
+  hat_matrix <- X %*% solve(t(X) %*% X + lambda*I) %*% t(X)
   
   degrees_of_freedom <- sum(diag(hat_matrix))
   
@@ -121,14 +102,18 @@ df(input_data = train)
 
 # Task 4
 
-theta_hat_1 <- RidgeOpt( lamda = 1, input_data = train)
-theta_hat_100 <- RidgeOpt( lamda = 100, input_data = train)
-theta_hat_1000 <- RidgeOpt( lamda = 1000, input_data = train)
+theta_hat_1 <- RidgeOpt( lambda = 1, input_data = train)
+theta_hat_100 <- RidgeOpt( lambda = 100, input_data = train)
+theta_hat_1000 <- RidgeOpt( lambda = 1000, input_data = train)
+
+theta_hat_1[-1]
+theta_hat_100[-1]
+theta_hat_1000[-1]
 
 predicted_values <- function(theta_hat, input_data){
   
   X <- as.matrix(input_data[,-1])
-  y_hat <- X %*% theta_hat 
+  y_hat <- X %*% theta_hat[-1] 
   
   return(y_hat)
 }
@@ -160,5 +145,28 @@ MSE_1_test <- MSE(y_hat_1_test, test)
 MSE_100_test <- MSE(y_hat_100_test, test)
 MSE_1000_test <- MSE(y_hat_1000_test, test)
 
-degrees_of_freedom_train <- df(input_data = train)
-degrees_of_freedom_test <- df(input_data = test)
+errors_df <- data.frame("lambda=1" = c(MSE_1_train,
+                                       MSE_1_test),
+                        "lambda=100" = c(MSE_100_train,
+                                         MSE_100_test),
+                        "lambda=1000" = c(MSE_1000_train,
+                                          MSE_1000_test))
+row.names(errors_df) <- c("MSE (training data)", "MSE (test data)")
+errors_df
+
+freedom_df <- data.frame("no penalty" = c(df(input_data = train),
+                                          df(input_data = test)),
+                         "lamda=1" = c(df(input_data = train, 
+                                          lambda = 1),
+                                       df(input_data = test, 
+                                          lambda = 1)),
+                         "lamda=100" = c(df(input_data = train, 
+                                            lambda = 100),
+                                         df(input_data = test, 
+                                            lambda = 100)),
+                         "lamda=1000" = c(df(input_data = train, 
+                                             lambda = 1000),
+                                          df(input_data = test, 
+                                             lambda = 1000)))
+row.names(errors_df) <- c("df (training data)", "df (test data)")
+freedom_df
