@@ -36,18 +36,47 @@ library(glmnet)
 X <- train[,-101]
 Y <- data.frame(train[,101])
 
-lasso <- glmnet(as.matrix(X),as.matrix(Y),alpha=1, family="gaussian") # alpha 1 for lasso
+lasso <- glmnet(as.matrix(X), as.matrix(Y), alpha=1) 
 
 summary(lasso)
 
-plot(lasso,xvar="lambda",label=TRUE) #understand the plot/make a better plot
+plot(lasso,xvar="lambda",label=TRUE)
+
+# for (i in seq(0.01, 1, by = 0.01)) {
+#   nparam <- sum(coef(lasso, s = i)[,1] != 0)
+#   if(nparam == 4){
+#     lambda <- i
+#     break
+#   }
+# }
+# cat("Optimal lambda:",lambda)
 
 # Task 4
 
-ridge <- glmnet(as.matrix(X),as.matrix(Y),alpha=0,family="gaussian") # alpha 0 for ridge
+ridge <- glmnet(as.matrix(X), as.matrix(Y), alpha=0)
 
-plot(ridge,xvar="lambda",label=TRUE) #understand the plot/make a better plot
+plot(ridge,xvar="lambda",label=TRUE) 
 
 # Task 5
+
+cv_lasso <- cv.glmnet(as.matrix(X), as.matrix(Y), alpha = 1)
+
+plot(cv_lasso)
+
+optimal.lambda <- predict(cv_lasso , as.matrix(test[,-101]) , s = cv_lasso$lambda.min)
+
+optimal_df <- data.frame( "Actual"= test$Fat, "Predicted" = optimal.lambda)
+
+library(ggplot2)
+
+my_scatterplot <-ggplot(optimal_df,aes(x=s1, y= Actual)) + geom_point( color = "#00aedb") + 
+  lims(x=c(0,65), y=c(0,65)) + 
+  geom_abline(color = "#d11141") +
+  labs(title = "Model Correspondence") +
+  xlab("Predicted Values") +
+  ylab("Actual Values") +
+  theme_bw()
+  
+my_scatterplot
 
 
