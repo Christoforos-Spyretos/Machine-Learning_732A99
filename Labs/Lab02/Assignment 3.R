@@ -75,12 +75,12 @@ my_cost <- function(beta,input_data){
   return(cost)
 }
 
-k <- 0
+n <- 0
 mse_train <- list()
 mse_test <- list()
 
 my_function <- function(beta,train_data = train,test_data = test){
-  .GlobalEnv$k = .GlobalEnv$k+1
+  .GlobalEnv$k = .GlobalEnv$n+1
   .GlobalEnv$mse_train[[k]] = my_cost(beta,train_data)
   .GlobalEnv$mse_test[[k]] = my_cost(beta,test_data)
   return(x)
@@ -88,8 +88,6 @@ my_function <- function(beta,train_data = train,test_data = test){
 
 optimal <- optim( par = rep(0,100), fn = my_function, method = "BFGS")
 
-# plot(2000:k, MSE_train[2000:k], col="blue", type="l", ylim = c(0,0.7))
-# lines(2000:k, MSE_test[2000:k], col="red")
 
 
 
