@@ -24,9 +24,9 @@ misclass <- function(actual_val,fitted_val){
   confusion_matrix <- table(actual_val,fitted_val)
   n <- length(actual_val)
   
-  error <- 1 - (sum(diag(confusion_matrix))/n)
+  rate <- 1 - (sum(diag(confusion_matrix))/n)
   
-  return(error)
+  return(rate)
 }
 
 # Decision tree with default settings
@@ -88,19 +88,14 @@ ggplot(data = df) +
                      name = "Legend",
                      labels = c("Train","Valid" ))
 
-finalTree <- prune.tree(tree_train_dev, best=which.min(validScore[-1]))
+# which.min(validScore[-1]) optimal number of leafs 21
+optimal <- prune.tree(tree_train_dev, best=which.min(validScore[-1]))
+# plot(optimal)
+# text(optimal,pretty = 0)
 
-# leafs <- data.frame( "variables" = finalTree$frame$var)
-# 
-# counter <- which(leafs != "<leaf>")
-# 
-# optimal <- sort(table(leafs[which(leafs$variable!='<leaf>'),"variable"]), decreasing = TRUE)[1:9]
-# 
-# prunedTree_opt <- prune.tree(tree_train_dev,best=which.min(validScore[-1])) #23 nodes
-# 
-# results <- data.frame("variable"= prunedTree_opt$frame$var)
-# results[which(results$variable!='<leaf>'),]
-# sort(table(results[which(results$variable!='<leaf>'),"variable"]), decreasing = TRUE)[1:9]
+leafs <- list(optimal$frame$var)
+
+sort(table(leafs))
 
 # Task 4
 
@@ -129,6 +124,7 @@ pred_test_loss <- predict(tree_test_loss, newdata=test, type="class")
 confusion_matrix_loss <- table(test$y, pred_test_loss)
 
 # Task 6
+
 
 
 
