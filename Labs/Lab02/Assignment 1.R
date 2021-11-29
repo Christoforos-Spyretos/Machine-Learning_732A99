@@ -42,14 +42,7 @@ summary(lasso)
 
 plot(lasso,xvar="lambda",label=TRUE)
 
-# for (i in seq(0.01, 1, by = 0.01)) {
-#   nparam <- sum(coef(lasso, s = i)[,1] != 0)
-#   if(nparam == 4){
-#     lambda <- i
-#     break
-#   }
-# }
-# cat("Optimal lambda:",lambda)
+log(lasso$lambda)
 
 # Task 4
 

@@ -75,10 +75,10 @@ my_cost <- function(beta,input_data){
   return(cost)
 }
 
-n <- 0
 mse_train <- list()
 mse_test <- list()
 
+n <- 0
 my_function <- function(beta,train_data = train,test_data = test){
   .GlobalEnv$k = .GlobalEnv$n+1
   .GlobalEnv$mse_train[[k]] = my_cost(beta,train_data)
