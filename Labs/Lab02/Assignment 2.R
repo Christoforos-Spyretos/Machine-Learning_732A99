@@ -125,6 +125,8 @@ confusion_matrix_loss <- table(test$y, pred_test_loss)
 
 # Task 6
 
+pi <- seq(0.05,0.95,by=0.05)
+
 
 
 
