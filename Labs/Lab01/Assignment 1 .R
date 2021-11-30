@@ -116,7 +116,7 @@ my_plot <- ggplot( data = rate) +
 my_plot
 
 # Task 5
-cross_entropy <- list()
+cross_entropy_valid <- list()
 for (K in 1:30) {
   fit = kknn(as.factor(V65)~., train, valid, k=K, kernel="rectangular")
   
@@ -131,14 +131,41 @@ for (K in 1:30) {
       }
     }
   }
-  cross_entropy[[K]] <- sum(unlist(entropy))
+  cross_entropy_valid[[K]] <- sum(unlist(entropy))
 }
-cross_entropy_valid <- data.frame(cross_entropy = unlist(cross_entropy), K = 1:30)
 
-ggplot(cross_entropy_valid, aes(x = K, y = cross_entropy)) + 
-  geom_point(col = "blue") + theme_bw() + 
-  labs(title = "Cross-entropy error for different Ks in KNN", y = "Cross-entropy")+
-  scale_x_continuous(breaks = 1:30)
+cross_entropy_train <- list()
+for (K in 1:30) {
+  fit = kknn(as.factor(V65)~., train, train, k=K, kernel="rectangular")
+  
+  df <- data.frame(fit$prob)
+  df$digit <- train$V65
+  
+  entropy <- list()
+  for (i in 1:nrow(df)) { 
+    for (n in 1:10) {
+      if (df$digit[i] == n-1) {
+        entropy[[i]] = -(log(df[i, n]+ 1e-15))
+      }
+    }
+  }
+  cross_entropy_train[[K]] <- sum(unlist(entropy))
+}
+
+cross_entropy <- data.frame(train = unlist(cross_entropy_train), 
+                            valid = unlist(cross_entropy_valid),
+                            K = 1:30)
+
+ggplot(cross_entropy) + 
+  geom_point(aes(x = K, y = valid, color = "#d1495b")) + 
+  geom_line(aes(x=K, y = train, color = "#00A5FF")) +
+  theme_bw() + 
+  labs(title = "Cross-entropy error for different Ks in KNN", y = "Cross-entropy of Train & Valid Data")+
+  scale_x_continuous(breaks = 1:30) +
+  theme(legend.position="right") +
+  scale_color_manual(values=c('#d1495b','#00A5FF'),
+                     name = "Legend",
+                     labels = c("Valid","Train" ))
 
 
 
