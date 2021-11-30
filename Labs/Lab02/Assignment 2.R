@@ -95,7 +95,7 @@ optimal <- prune.tree(tree_train_dev, best=which.min(validScore[-1]))
 
 leafs <- list(optimal$frame$var)
 
-sort(table(leafs))
+sort(table(leafs), decreasing = TRUE)
 
 # Task 4
 

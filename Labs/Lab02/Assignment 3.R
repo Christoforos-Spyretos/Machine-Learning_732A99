@@ -26,9 +26,12 @@ df_scores <- data.frame(pca$scores[,1:2])
 
 df_scores$ViolentCrimesPerPop <- data$ViolentCrimesPerPop
 
-ggplot(data = df_scores, aes(x=Comp.1, y=Comp.2, color = ViolentCrimesPerPop)) + geom_point() +
-  labs(title("PC Scores of PC1 & PC2")) + xlab("PC1") + ylab("PC2")
-  #guides(color=guide_legend("Violent Crimes Per 100K Population"))
+library(ggplot2)
+
+ggplot(data = df_scores, aes(x=Comp.1, y=Comp.2, color = ViolentCrimesPerPop)) + 
+  geom_point() +
+  labs(title("PC Scores of PC1 & PC2")) + xlab("PC1") + ylab("PC2") +
+  scale_colour_gradientn(colors=rainbow(7))
 
 # Task 3
 
@@ -75,34 +78,24 @@ my_cost <- function(beta,input_data){
   return(cost)
 }
 
+params <- list()
 mse_train <- list()
 mse_test <- list()
+k <- 0
 
-n <- 0
 my_function <- function(beta,train_data = train,test_data = test){
-  .GlobalEnv$k = .GlobalEnv$n+1
-  .GlobalEnv$mse_train[[k]] = my_cost(beta,train_data)
+  .GlobalEnv$k = .GlobalEnv$k+1
+  x <-  my_cost(beta,train_data)
+  .GlobalEnv$mse_train[[k]] = x
   .GlobalEnv$mse_test[[k]] = my_cost(beta,test_data)
   return(x)
 } 
 
-optimal <- optim( par = rep(0,100), fn = my_function, method = "BFGS")
+res <- optim( par = rep(0,100), fn = my_function, method = "BFGS")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+plot(2000:k, mse_train[2000:k], col="navy", type="l", ylim = c(0,1), 
+     ylab = "MSE of Train & Test", xlab = "Iterations")
+lines(2000:k, mse_test[2000:k], col="red4")
 
 
 
