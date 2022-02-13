@@ -1,0 +1,7 @@
+1.1 1.5p Insufficient explanation for why scaling is necessary (not connected to PCA)
+1.2 2.5p Wrong test error, inadequate discussion on prediction quality, missing one decision boundary
+1.3 2p No discussion on bias-variance tradeoff, no ROC curve (but attempt)
+2.1 0p Missing
+2.2 0p Code incorrect (no comparison with data), no discussion on selection of h, no mention of how to calculate posterior probabilities
+
+Total 6p Grade F

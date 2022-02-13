@@ -1,0 +1,168 @@
+---
+title: "Machine Learning Exam January 2020"
+author: "Christophoros Spyretos"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+# Assignment 1
+
+```{r}
+# import data
+glass <- read.csv("glass.csv")
+
+# preparing data
+glass$Class <- as.factor(glass$Class)
+glass <- glass[,-1]
+
+#splitting data
+n=dim(glass)[1]
+set.seed(12345)
+id=sample(1:n, floor(n*0.4))
+train=glass[id,]
+id1=setdiff(1:n, id)
+set.seed(12345)
+id2=sample(id1, floor(n*0.3))
+valid=glass[id2,]
+id3=setdiff(id1,id2)
+test=glass[id3,]
+
+# combine train & valid data
+trval=rbind(train,valid)
+```
+
+```{r}
+# fitting the logistic regression model
+log_reg <- glm(Class~., data=trval, family=binomial)
+```
+
+```{r}
+# predict test data
+# type = response for numerical values between 0 and 1
+pred_test <- predict(log_reg, newdata = test, type = "response") 
+
+# determine the threshold value
+pred_test=as.numeric(pred_test>0.5) 
+
+# confusion matrix
+cm <- table(test$Class, pred_test)
+```
+
+The prediction of the model is good with only 8 misclassifications out of 65.
+```{r}
+knitr::kable(cm)
+```
+
+The fitted probabilistic model is given by the formula:
+
+$$ 
+\begin{aligned}
+p(y=Class|w,x)=\frac{1}{1+exp(-w_{0}-\sum_{1}^{9}{w_{i}}x_{i})}\\
+\end{aligned}
+$$
+Where:
+$$ 
+\begin{aligned}
+-w_{0}-\sum_{1}^{9}{w_{i}}x_{i} = 12081.97 -3915.57 RI -50.77Na -33.88Mg -94.59Al -66.46  Si -40K -40.48Ca -52.4Ba + 88.57Fe   
+\end{aligned}
+$$
+The decision boundary is:
+$$ 
+\begin{aligned}
+12081.97 -3915.57 RI -50.77Na -33.88Mg -94.59Al -66.46  Si -40K -40.48Ca -52.4Ba + 88.57Fe   
+\end{aligned}
+$$
+
+# Assignment 2
+
+```{r}
+# import data
+mortality_rate <- read.csv2("mortality_rate.csv")
+
+# preparing data
+X  <- mortality_rate$Day
+data <-data.frame(X1=X,
+                  X2=X^2, 
+                  X3=X^3, 
+                  X4=X^4, 
+                  X5=ifelse(X-75>0, X-75,0)^4, 
+                  Y=mortality_rate$Rate)
+```
+
+```{r}
+#fitting the linear regression model 
+lin_reg <- lm(Y~., data = data)
+pred <- predict(lin_reg)
+```
+
+```{r}
+# preparing data for plot
+df_plot <- cbind(mortality_rate,pred)
+
+# plot original & predicted data
+ggplot() +
+  geom_point(data = df_plot, aes(x=Day,y=Rate, color = "navy")) +
+  geom_point(data = df_plot, aes(x=Day,y=pred, color = "red3")) +
+  theme(legend.position="right") +
+  scale_color_manual(values=c("navy","red3"),
+                     name = "",
+                     labels = c("Original","Predicted"))
+```
+
+From the above plot the model seems to be underfitted. The reasons that this might happen is because of the either the 5-spline order or the value of the knot.
+
+```{r}
+summary(lin_reg)
+```
+
+The third and fourth degree terms of the model were necessary with the significant level of 0.001. 
+
+```{r}
+df <- function(input_data){
+  
+  X <- as.matrix(input_data[,-6])
+  I <- diag(ncol(X))
+  hat_matrix <- X %*% solve(t(X) %*% X) %*% t(X)
+  
+  degrees_of_freedom <- sum(diag(hat_matrix))
+  
+  return(degrees_of_freedom)
+}
+
+df(data)
+```
+
+The degrees of freedom are 6 (5 + the intercept), which is the amount of the parameters of the fitted linear regression model. Therefore the model is parametric, because whatever data we take the degrees of freedom will always be 6 and thus the complexity of the data will remain the same.
+
+# Assignment 3
+
+# Assignment 4
+
+# Assignment 5
+
+```{r}
+library(neuralnet)
+
+set.seed(1234567890)
+x1 <- runif(1000, -1, 1)
+x2 <- runif(1000, -1, 1)
+tr <- data.frame(x1,x2, y=x1 + x2)
+
+nn<-neuralnet(formula = y ~ x1 + x2, data = tr, hidden = c(1), act.fct = "tanh")
+
+plot(nn)
+```
+
+
+```{r}
+f <- seq(-2,2,.1)
+g <- tanh(f)
+plot(f,g,type="l")
+v <- tanh(0.13*tr$x1+0.13*tr$x2)
+points(0.13*tr$x1+0.13*tr$x2,v) # The hidden unit only takes values in the linear part of the tanh.
+```
+

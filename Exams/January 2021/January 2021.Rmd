@@ -1,0 +1,102 @@
+---
+title: "Machine Learning Exam 15 January 2020"
+author: "Christophoros Spyretos"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 1.2
+
+```{r}
+# import data
+data <- read.csv("default.csv")
+
+#preparing data
+data <- data[-c(1,3,4)]
+data$AGE <- data$AGE/100
+
+#splitting data
+n=dim(data)[1]
+set.seed(12345)
+id=sample(1:n, floor(n*0.4))
+train=data[id,]
+id1=setdiff(1:n, id)
+set.seed(12345)
+id2=sample(id1, floor(n*0.3))
+valid=data[id2,]
+id3=setdiff(id1,id2)
+test=data[id3,]
+```
+
+```{r}
+#likelihood function
+likelihood<-function(input_data,parameter){
+  
+  Y <- as.matrix(input_data[,3], nrow = 800)
+  X <- input_data[,-3]
+  X0 <- rep(1,nrow(input_data))
+  X_new <- cbind(X0,X)
+  n <- nrow(input_data)
+  
+  res <- (1/n) * sum(log(1 + exp(-(Y*parameter*X_new))))
+  
+  return(res)
+}
+
+parameter_a <- c(0,1,0)
+likelihood_a <- likelihood(train,parameter_a)
+
+parameter_b <- c(0,0,1)
+likelihood_b <- likelihood(train,parameter_b)
+
+parameter_c <- c(1,1,1)
+likelihood_c <- likelihood(train,parameter_c)
+```
+
+```{r}
+optimal <- function(input_data){
+  res <- optim( par = c(1,1,1), fn = likelihood, input_data = train)
+  return(res)
+}
+
+best_par <- optimal(train) 
+best_par$par
+```
+
+The decision boundary is:
+$$ 
+\begin{aligned}
+189.8556 - 368.6556Sex - 167.2778Age
+\end{aligned}
+$$
+
+```{r}
+library(glmnet)
+
+log_reg <- glm(default_payment ~ ., data = train, family=binomial)
+
+pred_train <- predict(log_reg, newdata = train)
+pred_test <- predict(log_reg, newdata = test)
+
+misclass <- function(actual_val,fitted_val){
+  confusion_matrix <- table(actual_val,fitted_val)
+  n <- length(actual_val)
+  error <- 1 - (sum(diag(confusion_matrix))/n)
+  return(error)
+}
+
+train_error <- misclass(train$default_payment,pred_train)
+test_error <- misclass(test$default_payment,pred_test)
+```
+
+
+
+
+
+
+
+
+
