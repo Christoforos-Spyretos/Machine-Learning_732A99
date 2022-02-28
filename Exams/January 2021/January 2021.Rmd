@@ -33,17 +33,18 @@ test=data[id3,]
 
 ```{r}
 #likelihood function
-likelihood<-function(input_data,parameter){
+likelihood<-function(input_data,theta){
   
-  Y <- as.matrix(input_data[,3], nrow = 800)
+  Y <- as.matrix(input_data[,3])
   X <- input_data[,-3]
   X0 <- rep(1,nrow(input_data))
   X_new <- cbind(X0,X)
   n <- nrow(input_data)
   
-  res <- (1/n) * sum(log(1 + exp(-(Y*parameter*X_new))))
-  
-  return(res)
+  logl <- 0
+  for (i in 1:length(Y)) {
+    logl <- logl + log(1 + exp(-Y[i]*t(theta)%*%as.matrix(X[i,]))) }
+  return(logl/n) # negative log-likelihood 
 }
 
 parameter_a <- c(0,1,0)
