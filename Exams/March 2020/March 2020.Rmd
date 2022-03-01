@@ -1,6 +1,5 @@
 ---
-title: "Machine Learning Exam March 2020"
-author: "Christophoros Spyretos"
+title: "March 2020"
 output: pdf_document
 ---
 

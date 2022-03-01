@@ -1,6 +1,5 @@
 ---
-title: "Machine Learning Exam 15 January 2020"
-author: "Christophoros Spyretos"
+title: "January 2021"
 output: pdf_document
 ---
 
@@ -40,11 +39,11 @@ likelihood<-function(input_data,theta){
   X0 <- rep(1,nrow(input_data))
   X_new <- cbind(X0,X)
   n <- nrow(input_data)
-  
   logl <- 0
   for (i in 1:length(Y)) {
-    logl <- logl + log(1 + exp(-Y[i]*t(theta)%*%as.matrix(X[i,]))) }
-  return(logl/n) # negative log-likelihood 
+    logl <- sum(logl + log(1 + exp(-Y[i]*t(theta)*X[i,])))
+    }
+  return(logl/n) # negative log-likelihood
 }
 
 parameter_a <- c(0,1,0)
@@ -55,7 +54,18 @@ likelihood_b <- likelihood(train,parameter_b)
 
 parameter_c <- c(1,1,1)
 likelihood_c <- likelihood(train,parameter_c)
+
+df_loglik <- data.frame("Log-Likelihodd" =c(likelihood_a,
+                                           likelihood_b,
+                                           likelihood_c))
+
+row.names(df_loglik) <- c("w=(0,1,0)","w=(0,0,1)","w=(1,1,1)")
+knitr::kable(df_loglik)
 ```
+
+The log-likelihood value of a regression model is a way to measure the goodness of fit for a model. The higher the value of the log-likelihood, the better a model fits a data set. Logistic regression is a classical linear method for binary classification. By comparing, the log-likelihood values from the above table, it could be seen that the log-likelihood using the second parameter vector $(0,0,1)$ performed better; thus the target value would be better predicted by using the second parameter vector. 
+
+# Assignment 1.3
 
 ```{r}
 optimal <- function(input_data){
@@ -70,7 +80,7 @@ best_par$par
 The decision boundary is:
 $$ 
 \begin{aligned}
-189.8556 - 368.6556Sex - 167.2778Age
+33.25926 -  271.92593Sex - 97.49630Age
 \end{aligned}
 $$
 
@@ -91,8 +101,15 @@ misclass <- function(actual_val,fitted_val){
 
 train_error <- misclass(train$default_payment,pred_train)
 test_error <- misclass(test$default_payment,pred_test)
+
+df_error <- data.frame("Train error" = train_error,
+                       "Test error" = test_error)
+
+row.names(df_error) <- c("Misclassification Rates")
+knitr::kable(df_error)
 ```
 
+From the above table it could be seen that both of the errors are pretty high. Both values are almost the same, the test error provided a slightly worse error compared to the test error.
 
 
 

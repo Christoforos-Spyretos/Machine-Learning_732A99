@@ -1,5 +1,5 @@
 ---
-title: "Machine Learning Exam January 2020"
+title: "January 2020"
 output: pdf_document
 ---
 
