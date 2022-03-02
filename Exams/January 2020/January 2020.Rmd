@@ -141,7 +141,7 @@ The degrees of freedom are 6 (5 + the intercept), which is the amount of the par
 
 # Assignment 4
 
-## Mixture Gaussian Models
+## Mixture Gaussian Models (Unsupervised GMM)
 
 ```{r}
 library(mvtnorm)

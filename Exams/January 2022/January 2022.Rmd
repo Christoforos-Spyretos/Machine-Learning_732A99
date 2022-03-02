@@ -5,7 +5,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 70), tidy = TRUE)
 ```
 
 # Assignment 1
@@ -184,7 +184,7 @@ In this case, the ROC curve with true positive rate (TPR) and false positive rat
 
 # Assignment 2
 
-## Gaussian Mixture Models
+## Gaussian Mixture Models (Semi-Supervised GMM)
 
 ```{r}
 #install.packages("mvtnorm")
@@ -246,16 +246,17 @@ mu
 
 ```{r}
 #Variance of the known components for each class 
-Sigma[,,1] <- var(x[1:10,]) 
+
+Sigma[,,1] <- var(x[1:10,]) #which is the same as (t(x[1:10,] - mu[1,]) %*% (x[1:10,] - mu[1,])) / 10
 Sigma[,,2] <- var(x[101:110,])
 Sigma[,,3] <- var(x[201:210,])
-#which is the same as (t(x[1:10,] - mu[1,]) %*% (x[1:10,] - mu[1,])) / 10
+
 ```
 
 ```{r}
 # set max_it to some value
 max_it <- 10000
-#Create vector to store log-likelihoods which is # needed to compare the minimum change in log-likelihoods.
+#Create vector to store log-likelihoods which is needed to compare the minimum change in log-likelihoods.
 llik <- rep(NA, length=max_it) 
 
 for (it in 1:max_it) {
@@ -265,11 +266,10 @@ for (it in 1:max_it) {
   
   for (n in 1:N) { 
 
-# According to the instructions, the algorithm is not run for all value of N data points but only for the unkown ones. This does not make a difference though, because in the implementation below every known data point is set to its original known value (i.e. 1 for the correct class and 0 for the incorrect ones). In other words, these iterations do # not make a difference and it is the same as if they were set only one # initial time.
+# According to the instructions, the algorithm is not run for all value of N data points but only for the unkown ones. This does not make a difference though, because in the implementation below every known data point is set to its original known value (i.e. 1 for the correct class and 0 for the incorrect ones). In other words, these iterations do not make a difference and it is the same as if they were set only one # initial time.
   
     for (k in 1:K) {
       
-      # w according to (10.2b) 
       w[n, k] <- pi[k] * dmvnorm(x[n, ], mu[k, ], Sigma[,, k]) 
     }
     
