@@ -175,12 +175,12 @@ ggplot() +
             mapping=aes(FPR, TPR, color = "Optimal Curve")) +
   geom_line(data=data.frame(FPR=c(0,1), TPR=c(0,1)),
             mapping=aes(FPR, TPR, color = "Random Guess")) +
-  theme_minimal() + labs(title = "ROC Curve")
+  theme_minimal() + 
+  labs(title = "ROC Curve")
 ```
 
 From the plot one can see that the Logistic Regression performs very well on the test data. The area under the curve is almost 1 which is the optimal value a model could theoretically get. A model that would only output random guesses of the two classes for the prediction would have a value for the area under the curve of 0.5, so the proposed model performs way better.
 In this case, the ROC curve with true positive rate (TPR) and false positive rate (FPR) was used, because the two target classes are appear about equally in the data (otherwise another metric than FPR and TPR would be more insightful).
-
 
 # Assignment 2
 
@@ -256,7 +256,9 @@ Sigma[,,3] <- var(x[201:210,])
 ```{r}
 # set max_it to some value
 max_it <- 10000
-#Create vector to store log-likelihoods which is needed to compare the minimum change in log-likelihoods.
+
+# Create vector to store log-likelihoods which is needed 
+# to compare the minimum change in log-likelihoods.
 llik <- rep(NA, length=max_it) 
 
 for (it in 1:max_it) {
@@ -269,7 +271,6 @@ for (it in 1:max_it) {
 # According to the instructions, the algorithm is not run for all value of N data points but only for the unkown ones. This does not make a difference though, because in the implementation below every known data point is set to its original known value (i.e. 1 for the correct class and 0 for the incorrect ones). In other words, these iterations do not make a difference and it is the same as if they were set only one # initial time.
   
     for (k in 1:K) {
-      
       w[n, k] <- pi[k] * dmvnorm(x[n, ], mu[k, ], Sigma[,, k]) 
     }
     
@@ -295,7 +296,8 @@ for (it in 1:max_it) {
     # Log likelihood computation according to (10.2b) 
     llik[it] <- llik[it] + log(sum(w[n, ]))
     
-    # does not change value of known data points because they sum up to one by definition
+    # does not change value of known data points
+    # because they sum up to one by definition
     w[n, ] <- w[n, ]/sum(w[n, ]) 
     }
   cat("iteration: ", it, "log likelihood: ", llik[it], "\n") 
@@ -308,21 +310,19 @@ for (it in 1:max_it) {
     } 
   }
   # M-step: ML parameter estimation from the data and 
-  
   # fractional component assignments
   for (k in 1:K) { # for each class calculate
-    
     # pi according to (10.10b) 
     pi[k] <- sum(w[, k])/N 
-    
-    for (d in 1:D) { # for each dimension calculate
-      
+    # for each dimension calculate
+    for (d in 1:D) { 
       # mu according to (10.10c) 
       mu[k, d] <- sum(x[, d] * w[, k])/sum(w[, k]) 
-      }
-    
-    for (d in 1:D) { # for each dimension calculate 
-      for (d2 in 1:D) { # for each dimension calculate
+    }
+    # for each dimension calculate 
+    for (d in 1:D) { 
+      # for each dimension calculate
+      for (d2 in 1:D) {
         # according to (10.10d)
         Sigma[d, d2, k] <- sum((x[, d] - mu[k, d]) * (x[, d2] - mu[k, d2]) * w[, k])/sum(w[, k])
       } 

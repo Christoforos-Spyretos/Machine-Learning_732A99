@@ -7,7 +7,9 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Assignment 1.2
+# Assignment 1
+
+## Task 2
 
 ```{r}
 # import data
@@ -15,7 +17,7 @@ data <- read.csv("default.csv")
 
 #preparing data
 data <- data[-c(1,3,4)]
-data$AGE <- data$AGE/100
+#data$AGE <- data$AGE/100
 
 #splitting data
 n=dim(data)[1]
@@ -32,8 +34,8 @@ test=data[id3,]
 
 ```{r}
 #likelihood function
-likelihood<-function(input_data,theta){
-  
+neg_likelihood<-function(input_data,w){
+
   Y <- as.matrix(input_data[,3])
   X <- input_data[,-3]
   X0 <- rep(1,nrow(input_data))
@@ -41,35 +43,49 @@ likelihood<-function(input_data,theta){
   n <- nrow(input_data)
   logl <- 0
   for (i in 1:length(Y)) {
-    logl <- sum(logl + log(1 + exp(-Y[i]*t(theta)*X[i,])))
+    logl <- sum(logl + log(1 + exp(-Y[i]*t(w)*X[i,])))
     }
   return(logl/n) # negative log-likelihood
 }
 
 parameter_a <- c(0,1,0)
-likelihood_a <- likelihood(train,parameter_a)
+neg_likelihood_a <- neg_likelihood(train,parameter_a)
 
 parameter_b <- c(0,0,1)
-likelihood_b <- likelihood(train,parameter_b)
+neg_likelihood_b <- neg_likelihood(train,parameter_b)
 
 parameter_c <- c(1,1,1)
-likelihood_c <- likelihood(train,parameter_c)
+neg_likelihood_c <- neg_likelihood(train,parameter_c)
 
-df_loglik <- data.frame("Log-Likelihodd" =c(likelihood_a,
-                                           likelihood_b,
-                                           likelihood_c))
+df_neg_loglik <- data.frame("Negative Log Likelihodd" =c(neg_likelihood_a,
+                                           neg_likelihood_b,
+                                           neg_likelihood_c))
 
-row.names(df_loglik) <- c("w=(0,1,0)","w=(0,0,1)","w=(1,1,1)")
-knitr::kable(df_loglik)
+row.names(df_neg_loglik) <- c("w=(0,1,0)","w=(0,0,1)","w=(1,1,1)")
+knitr::kable(df_neg_loglik)
+
+# negative_log_like <- function(training_data, w){
+#   Y <- training_data$default_payment # reponse
+#   X <- cbind(rep(1, length(Y)),training_data$AGE / 100, training_data$SEX) #predictors 
+#   n <- nrow(X)
+#   
+#   logl <- -sum(
+#     Y*(X%*%w - log(1+exp(X%*%w))) + (1-Y)*(-log(1+exp(X%*%w))))
+#   
+#   return(logl) # negative log-likelihood
+# }
+# negative_log_like(train, w = c(0,1,0))
+# negative_log_like(train, w = c(0,0,1))
+# negative_log_like(train, w = c(1,1,1))
 ```
 
-The log-likelihood value of a regression model is a way to measure the goodness of fit for a model. The higher the value of the log-likelihood, the better a model fits a data set. Logistic regression is a classical linear method for binary classification. By comparing, the log-likelihood values from the above table, it could be seen that the log-likelihood using the second parameter vector $(0,0,1)$ performed better; thus the target value would be better predicted by using the second parameter vector. 
+The negative log-likelihood value of a regression model is a way to measure the goodness of fit for a model. The lower the value of the log-likelihood, the better a model fits a data set. Logistic regression is a classical linear method for binary classification. By comparing, the log-likelihood values from the above table, it could be seen that the log-likelihood using the third parameter vector $(1,1,1)$ has the lowest value; thus the target value would be better predicted by using the second parameter vector. 
 
-# Assignment 1.3
+## Task 3
 
 ```{r}
 optimal <- function(input_data){
-  res <- optim( par = c(1,1,1), fn = likelihood, input_data = train)
+  res <- optim( par = c(1,1,1), fn = neg_likelihood, input_data = train)
   return(res)
 }
 
@@ -111,10 +127,141 @@ knitr::kable(df_error)
 
 From the above table it could be seen that both of the errors are pretty high. Both values are almost the same, the test error provided a slightly worse error compared to the test error.
 
+# Assignment 2
 
+## Mixture Models (Semi-Supervised GMM)
 
+```{r}
+set.seed(1234567890)
+min_change <- 0.1 # min change in log likelihood between two consecutive EM iterations
+N=300 # number of training points
+D=10 # number of dimensions
+x <- matrix(nrow=N, ncol=D) # training data
+true_pi <- vector(length = 3) # true mixing coefficients
+true_mu <- matrix(nrow=3, ncol=D) # true conditional distributions
+true_pi=c(1/3, 1/3, 1/3)
+true_mu[1,]=c(0.5,0.6,0.4,0.7,0.3,0.8,0.2,0.9,0.1,1)
+true_mu[2,]=c(0.5,0.4,0.6,0.3,0.7,0.2,0.8,0.1,0.9,0)
+true_mu[3,]=c(0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5)
+# plot(true_mu[1,], type="o", col="blue", ylim=c(0,1))
+# points(true_mu[2,], type="o", col="red")
+# points(true_mu[3,], type="o", col="green")
+```
 
+```{r}
+true_k <- array(dim = 300) # true component labels 
 
+# Producing the training data
+for(n in 1:N) {
+  k <- sample(1:3,1,prob=true_pi)
+  # 30 % of the training points have a label
+  true_k[n] <- k * sample(0:1,1,prob = c(1,0)) 
+  for(d in 1:D) {
+    x[n,d] <- rbinom(1,1,true_mu[k,d]) }
+}
+```
 
+```{r}
+K = 3
+w <- matrix(nrow=N, ncol=K) # fractional component assignments
+pi <- vector(length = K) # mixing coefficients
+mu <- matrix(nrow=K, ncol=D) # conditional distributions
+```
 
+```{r}
+# Assuming that we know the true class 
+# of 10 components of each class.
+pi <- c(10, 10, 10) # We know the first 10 components of each class 
+pi <- pi/sum(pi) # to get percentages
+#pi
+```
 
+```{r}
+# Mean of the known components for each class
+mu[1, ] <- colMeans(x[1:100, ])
+mu[2, ] <- colMeans(x[101:110, ])
+mu[3, ] <- colMeans(x[201:210, ])
+#mu
+```
+
+```{r}
+# set max_it to some value
+# max number of EM iterations
+max_it <- 10000
+
+# Create vector to store log-likelihoods which is needed to compare 
+# the minimum change in log-likelihoods.
+llik <- rep(NA, length = max_it)
+
+for(it in 1:max_it) {
+  # plot(mu[1,], type="o", col="blue", ylim=c(0,1))
+  # points(mu[2,], type="o", col="red")
+  # points(mu[3,], type="o", col="green")
+  # points(mu[4,], type="o", col="black")
+  Sys.sleep(0.5)
+  
+  # E-step: Computation of the fractional component assignments
+  mux <- matrix(nrow=N, ncol=K)
+  for (n in 1:N) {
+    for (k in 1:K) {
+      mux[n,k] <- prod(mu[k,]^x[n,],(1-mu[k,])^(1-x[n,]))
+    }
+  }
+  w <- t(pi*t(mux))/rowSums(t(pi*t(mux)))
+  
+  # If data point is known, set to 1 for correct class and 0 for all others.
+    if (n %in% 1:10){ 
+      w[n,1] <- 1 
+      w[n,2] <- 0 
+      w[n,3] <- 0
+    }
+    
+    if (n %in% 101:110){
+      w[n,1] <- 0
+      w[n,2] <- 1
+      w[n,3] <- 0
+    }
+    
+    if (n %in% 201:210){
+      w[n,1] <- 0
+      w[n,2] <- 0
+      w[n,3] <- 1
+    }
+  
+  #Log likelihood computation.
+  # E <- sum(log(rowSums(t(pi*t(mux)))))
+  E <- 0
+  for (n in 1:N) {
+    for (k in 1:K) {
+      a <- 0
+        for (i in 1:D) {
+          a <- a+x[n,i]*log(mu[k,i])+(1-x[n,i])*log(1-mu[k,i])
+        }
+      a <- log(pi[k])+a
+      E <- E+w[n,k]*a
+    }
+  }
+  
+  llik[it] <- E
+  #cat("iteration: ", it, "log likelihood: ", llik[it], "\n")
+  flush.console()
+  
+  # Stop if the log likelihood has not changed significantly
+  if (it > 1) {
+    if (abs(llik[it] - llik[it - 1]) < min_change) {
+      break
+    } 
+  }
+  #M-step: ML parameter estimation from the data and fractional component assignments
+  pi <- colSums(w)/N
+  for (k in 1:K) {
+    for (i in 1:D) {
+      mu[k,i] <- x[,i]%*%w[,k]/sum(w[,k])
+    }
+  }
+}
+# plot(mu[1,], type="o", col="blue", ylim=c(0,1))
+# points(mu[2,], type="o", col="red")
+# points(mu[3,], type="o", col="green")
+# plot(llik[1:it], type="o", col="navy")
+```
