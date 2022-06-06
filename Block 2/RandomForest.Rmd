@@ -1,0 +1,231 @@
+---
+title: "Machine Learning (732A90) Lab Block 2"
+author: "Christophoros Spyretos & Marc Braun"
+date: "`r Sys.Date()`"
+output: pdf_document
+papersize : a4
+---
+
+```{r setup, include=FALSE}
+library(formatR)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+
+```{r}
+# reading the data
+data <- read.csv("music_genre.csv")
+data <- data[,-c(1,2,3,16)] # remove ID, Artist, Song Title and Date
+
+# remove NAs or missing values
+data <- data[-which(is.na(data$popularity)),]
+data <- data[-which(is.na(as.numeric(data$tempo))),]
+data <- data[-which(data$duration_ms == -1),]
+data$tempo <- as.numeric(data$tempo)
+
+data <- as.data.frame(unclass(data), stringsAsFactors=TRUE)
+
+# Train-Test-Validation Split
+n=dim(data)[1]
+set.seed(12345)
+id=sample(1:n, floor(n*0.4))
+train=data[id,]
+id1=setdiff(1:n, id)
+set.seed(12345)
+id2=sample(id1, floor(n*0.4))
+valid=data[id2,]
+id3=setdiff(id1,id2)
+test=data[id3,]
+```
+
+```{r}
+# random forest
+library(randomForest)
+library(caret)
+library(ggplot2)
+library(gridExtra)
+
+# cost functions
+cross_entropy <- function(p, actual){
+  x <- 0
+  for (i in 1:length(actual)){
+    if (p[i, which(colnames(p) == actual[i])] == 0) p[i, which(colnames(p) == actual[i])] <- 10^(-15)
+    x <- x + (log(p[i, which(colnames(p) == actual[i])]))
+  }
+  return(-x)
+}
+
+misclass <- function(actual, predicted){
+  return(length(which(actual != predicted)) / length(actual))
+}
+
+
+validation_ntree <- function(nrange = 5:100){
+  accuracy_valid <- c()
+  accuracy_train <- c()
+  ce_valid <- c()
+  ce_train <- c()
+  miscl_valid <- c()
+  miscl_oob_train <- c()
+  ntree <- c()
+  for (n in nrange) {
+    forest_model <- randomForest(music_genre~., train, ntree=n)
+    
+    predictions <- predict(forest_model, valid)
+    perc_pred <- predict(forest_model, valid, type = "prob")
+    confMat <- confusionMatrix(predictions, valid$music_genre)
+    accuracy_valid <- append(accuracy_valid, confMat$overall[1])
+    ce_valid <- append(ce_valid, cross_entropy(perc_pred, valid$music_genre))
+    miscl_valid <- append(miscl_valid, misclass(valid$music_genre, predictions))
+    miscl_oob_train <- append(miscl_oob_train, misclass(train$music_genre, forest_model$predicted))
+    
+    
+    predictions <- predict(forest_model, train)
+    perc_pred <- predict(forest_model, train, type = "prob")
+    confMat <- confusionMatrix(predictions, train$music_genre)
+    accuracy_train <- append(accuracy_train, confMat$overall[1])
+    ce_train <- append(ce_train, cross_entropy(perc_pred, train$music_genre))
+    
+    ntree <- append(ntree, n)
+  }
+  miscl_plot <- ggplot(data.frame("ntree" = ntree, "valid.misscl.rate" = miscl_valid, "oob.misscl.rate" = miscl_oob_train)) +
+    geom_line(mapping=aes(ntree, valid.misscl.rate, color="validation")) +
+    geom_line(mapping=aes(ntree, oob.misscl.rate, color="oob")) +
+    theme_minimal() +
+    labs(y = "missclass. rate") +
+    theme(axis.title.x=element_blank(), axis.ticks.x = element_blank())
+    
+  acc_plot <- ggplot(data.frame("ntree" = ntree, "Accuracy_valid" = accuracy_valid, "Accuracy_train" = accuracy_train)) +
+    geom_line(mapping=aes(ntree, Accuracy_valid, color="validation")) +
+    #geom_line(mapping=aes(ntree, Accuracy_train, color="train")) +
+    theme_minimal() +
+    labs(y = "accuracy") +
+    theme(axis.title.x=element_blank(), axis.ticks.x = element_blank())
+  
+  ce_plot <- ggplot(data.frame("ntree" = ntree, "Ce_valid" = ce_valid, "Ce_train" = ce_train)) +
+    geom_line(mapping=aes(ntree, Ce_valid, color="validation")) +
+    #geom_line(mapping=aes(ntree, Ce_train, color="train")) +
+    theme_minimal() +
+    labs(y = "cross entropy loss")
+  
+  return(grid.arrange(miscl_plot, acc_plot, ce_plot, nrow=3, ncol=1))
+}
+
+validation_ntree()
+```
+
+```{r}
+validation_nodesize <- function(nrange = seq(1, 500, 50)){
+  accuracy <- c()
+  ce <- c()
+  nodesize <- c()
+  miscl_valid <- c()
+  miscl_oob <- c()
+  for (n in nrange) {
+    forest_model <- randomForest(music_genre~., train, nodesize=n, ntree=80)
+    predictions <- predict(forest_model, valid)
+    perc_pred <- predict(forest_model, valid, type = "prob")
+    confMat <- confusionMatrix(predictions, valid$music_genre)
+    accuracy <- append(accuracy, confMat$overall[1])
+    ce <- append(ce, cross_entropy(perc_pred, valid$music_genre))
+    nodesize <- append(nodesize, n)
+    miscl_valid <- append(miscl_valid, misclass(valid$music_genre, predictions))
+    miscl_oob <- append(miscl_oob,  misclass(train$music_genre, forest_model$predicted))
+  }
+  miscl_plot <- ggplot(data.frame("nodesize" = nodesize, "valid.misscl.rate" = miscl_valid, "oob.misscl.rate" = miscl_oob)) +
+    geom_line(mapping=aes(nodesize, valid.misscl.rate, color="validation")) +
+    geom_line(mapping=aes(nodesize, oob.misscl.rate, color="oob")) +
+    theme_minimal() +
+    labs(y = "missclass. rate") +
+    theme(axis.title.x=element_blank(), axis.ticks.x = element_blank())
+  acc_plot <- ggplot(data.frame("nodesize" = nodesize, "Accuracy" = accuracy), aes(nodesize, Accuracy)) +
+    geom_line(aes(color="validation")) +
+    theme_minimal() +
+    theme(axis.title.x=element_blank(), axis.ticks.x = element_blank())
+  ce_plot <- ggplot(data.frame("nodesize" = nodesize, "cross_entropy" = ce), aes(nodesize, cross_entropy)) +
+    geom_line(aes(color="validation")) +
+    theme_minimal()
+  grid.arrange(miscl_plot, acc_plot, ce_plot, nrow=3, ncol=1)
+}
+validation_nodesize()
+```
+
+```{r}
+# rule of thumb for mtry = sqrt(n) where n is the number of features used for prediction
+# we use 14 features so mtry is about 3
+validation_mtry <- function(nrange = 2:10){
+  accuracy_valid <- c()
+  accuracy_train <- c()
+  ce_valid <- c()
+  ce_train <- c()
+  mtry <- c()
+  miscl_valid <- c()
+  miscl_oob <- c()
+  for (n in nrange) {
+    forest_model <- randomForest(music_genre~., train, ntree=80, nodesize=1, mtry=n)
+    
+    predictions <- predict(forest_model, valid)
+    confMat <- confusionMatrix(predictions, valid$music_genre)
+    perc_pred <- predict(forest_model, valid, type = "prob")
+    accuracy_valid <- append(accuracy_valid, confMat$overall[1])
+    ce_valid <- append(ce_valid, cross_entropy(perc_pred, valid$music_genre))
+    
+    miscl_valid <- append(miscl_valid, misclass(valid$music_genre, predictions))
+    miscl_oob <- append(miscl_oob,  misclass(train$music_genre, forest_model$predicted))
+    
+    predictions <- predict(forest_model, train)
+    perc_pred <- predict(forest_model, train, type = "prob")
+    confMat <- confusionMatrix(predictions, train$music_genre)
+    accuracy_train <- append(accuracy_train, confMat$overall[1])
+    ce_train <- append(ce_train, cross_entropy(perc_pred, train$music_genre))
+    
+    mtry <- append(mtry, n)
+  }
+  miscl_plot <- ggplot(data.frame("mtry" = mtry, "valid.misscl.rate" = miscl_valid, "oob.misscl.rate" = miscl_oob)) +
+    geom_line(mapping=aes(mtry, valid.misscl.rate, color="validation")) +
+    geom_line(mapping=aes(mtry, oob.misscl.rate, color="oob")) +
+    theme_minimal() +
+    labs(y = "missclass. rate") +
+    theme(axis.title.x=element_blank(), axis.ticks.x = element_blank())
+  acc_plot <- ggplot(data.frame("mtry" = mtry, "Accuracy_valid" = accuracy_valid, "Accuracy_train" = accuracy_train)) +
+    geom_line(mapping=aes(mtry, Accuracy_valid, color="validation")) +
+    theme_minimal() +
+    labs(y = "accuracy") +
+    theme(axis.title.x=element_blank(), axis.ticks.x = element_blank())
+  ce_plot <- ggplot(data.frame("mtry" = mtry, "Cross_entropy_valid" = ce_valid, "Cross_entropy_train" = ce_train)) +
+    geom_line(mapping=aes(mtry, Cross_entropy_valid, color="validation")) +
+    theme_minimal() +
+    labs(y = "cross entropy loss")
+  return(grid.arrange(miscl_plot, acc_plot, ce_plot, nrow=3, ncol=1))
+}
+validation_mtry()
+```
+
+
+```{r}
+forest_model <- randomForest(music_genre~., train, nodesize=1, ntree=80, mtry=3)
+predictions <- predict(forest_model, test)
+confMat <- confusionMatrix(predictions, test$music_genre)
+perc <- predict(forest_model, test, type = "prob")
+accuracy <- confMat$overall[1]
+ce <- cross_entropy(perc, test$music_genre)
+miscl <- misclass(test$music_genre, predictions)
+
+plain_forest_model <- randomForest(music_genre~., train)
+plain_predictions <- predict(plain_forest_model, test)
+plain_confMat <- confusionMatrix(plain_predictions, test$music_genre)
+plain_perc <- predict(plain_forest_model, test, type = "prob")
+plain_accuracy <- plain_confMat$overall[1]
+plain_ce <- cross_entropy(plain_perc, test$music_genre)
+plain_miscl <- misclass(test$music_genre, plain_predictions)
+
+metrics <- data.frame("misclass_rate" = round(c(plain_miscl,miscl), 3),
+                        "accuracy" = round(c(plain_accuracy, accuracy), 3),
+                        "cross_entropy_loss" = round(c(plain_ce, ce), 3))
+
+rownames(metrics) <- c("plain", "new")
+
+knitr::kable(metrics)
+```
+

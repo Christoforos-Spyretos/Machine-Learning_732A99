@@ -1,0 +1,356 @@
+---
+title: "Neural Networks h2o package"
+date: "`r Sys.Date()`"
+output: pdf_document
+papersize : a4
+---
+
+```{r setup, include=FALSE}
+library(formatR)
+library(h2o)
+library(fastDummies)
+h2o.init(nthreads = -1)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 80), tidy = TRUE)
+```
+
+```{r}
+# reading the data
+data <- read.csv("music_genre.csv")
+data <- data[,-c(1,2,3,16)] # remove ID, Artist, Song Title and Date
+
+# remove NAs or missing values
+data$duration_ms[data$duration_ms == -1] <- NA
+data$tempo[data$tempo == "?"] <- NA
+data <- na.omit(data)
+data$tempo <- as.numeric(data$tempo)
+data$music_genre <- as.factor(data$music_genre)
+# data <- as.data.frame(unclass(data), stringsAsFactors=TRUE)
+```
+
+```{r}
+#creating dummies
+data <- dummy_cols(data, select_columns = c('key', 'mode') )
+data <- data[,-which(colnames(data) == "key" | colnames(data) == "mode")]
+
+#scaling data
+names(data)[14] <- "key_A_sharp"
+names(data)[17] <- "key_C_sharp"
+names(data)[19] <- "key_D_sharp"
+names(data)[22] <- "key_F_sharp"
+names(data)[24] <- "key_G_sharp"
+
+data[c(2:11)] <- scale(data[c(2:11)])
+```
+
+# Splitting the data into 40% train, 40% valid, 20% test.
+
+```{r}
+# splitting the data 
+n=dim(data)[1]
+set.seed(12345)
+id=sample(1:n, floor(n*0.4))
+train=data[id,]
+train <- as.h2o(train)
+
+id1=setdiff(1:n, id)
+set.seed(12345)
+id2=sample(id1, floor(n*0.4))
+valid=data[id2,]
+valid <- as.h2o(valid)
+
+id3=setdiff(id1,id2)
+test=data[id3,]
+test <- as.h2o(test)
+```
+
+# Neural Network Model 1 (Simple)
+
+```{r}
+# train neural networks
+nn1<- h2o.deeplearning(y = "music_genre",
+                       training_frame = train,
+                       model_id = "nn1",
+                       hidden = c(20,20),
+                       seed = 12345)
+
+# activation Activation function. Must be one of: "Tanh", "TanhWithDropout", 
+# "Rectifier", "RectifierWithDropout", "Maxout","MaxoutWithDropout". 
+# Defaults to Rectifier.
+
+h2o.mse(nn1) 
+plot(nn1) 
+```
+
+```{r}
+knitr::kable(h2o.confusionMatrix(nn1))
+```
+
+# Neural Network Model 2 
+
+```{r}
+nn2 <- h2o.deeplearning(y = "music_genre",
+                        training_frame = train,
+                        model_id = "nn2",
+                        epochs = 50,          # adding 50 iterations
+                        hidden = c(20,20),
+                        stopping_rounds = 0,  # disable early stopping
+                        seed = 12345)
+
+h2o.mse(nn2) 
+plot(nn2) # plotting the misclassification error of the training dataset.
+```
+
+```{r}
+knitr::kable(h2o.confusionMatrix(nn2))
+```
+
+# Neural Network Model 3
+
+```{r}
+nn3 <- h2o.deeplearning(y = "music_genre",
+                            training_frame = train,
+                            model_id = "nn3",
+                            epochs = 50,
+                            hidden = c(20,20),
+                            nfolds = 3,                             #used for early stopping
+                            score_interval = 1,                     #used for early stopping
+                            stopping_rounds = 5,                    #used for early stopping
+                            stopping_metric = "misclassification",  #used for early stopping
+                            stopping_tolerance = 0.001,             #used for early stopping
+                            seed = 12345)
+
+h2o.mse(nn3) 
+plot(nn3)
+```
+
+```{r}
+knitr::kable(h2o.confusionMatrix(nn3))
+```
+
+# Neural Network Model 4
+
+```{r}
+nn4 <- h2o.deeplearning(y = "music_genre",
+                            training_frame = train,
+                            model_id = "nn4",
+                            epochs = 100,
+                            hidden = c(50,50),
+                            nfolds = 5,                             #used for early stopping
+                            score_interval = 1,                     #used for early stopping
+                            stopping_rounds = 10,                   #used for early stopping
+                            stopping_metric = "misclassification",  #used for early stopping
+                            stopping_tolerance = 0.001,             #used for early stopping
+                            seed = 12345)
+
+h2o.mse(nn4) 
+plot(nn4)
+```
+
+```{r}
+knitr::kable(h2o.confusionMatrix(nn4))
+```
+
+# Neural Network Model 5
+
+```{r}
+nn5 <- h2o.deeplearning(y = "music_genre",
+                            training_frame = train,
+                            model_id = "nn5",
+                            epochs = 100,
+                            hidden = c(100,100),
+                            nfolds = 10,                            
+                            score_interval = 10,                    
+                            stopping_rounds = 10,                   
+                            stopping_metric = "misclassification", 
+                            stopping_tolerance = 1e-3,             
+                            seed = 12345)
+
+h2o.mse(nn5) 
+plot(nn5)
+```
+
+```{r}
+knitr::kable(h2o.confusionMatrix(nn5))
+```
+
+# Neural Network Model 6
+
+```{r}
+nn6 <- h2o.deeplearning(y = "music_genre",
+                            training_frame = train,
+                            model_id = "nn6",
+                            epochs = 150,
+                            hidden = c(150,150,150),
+                            nfolds = 15,                            
+                            score_interval = 10,                    
+                            stopping_rounds = 10,                   
+                            stopping_metric = "misclassification", 
+                            stopping_tolerance = 0.001,             
+                            seed = 12345)
+
+h2o.mse(nn6) 
+plot(nn6)
+```
+
+```{r}
+knitr::kable(h2o.confusionMatrix(nn5))
+```
+
+# Checking the performance of the models
+
+## Model 1
+
+```{r}
+# model 1
+perf_valid_1 <- h2o.performance(nn1, newdata = valid)
+perf_test_1 <- h2o.performance(nn1, newdata = test)
+h2o.mse(perf_valid_1)
+h2o.mse(perf_test_1)
+
+# Get the CV models from the `nn1` object
+cv_models1 <- sapply(nn1@model$cross_validation_models, function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models1[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+## Model 2
+
+```{r}
+#model 2
+perf_valid_2 <- h2o.performance(nn2, newdata = valid)
+perf_test_2 <- h2o.performance(nn2, newdata = test)
+h2o.mse(perf_valid_2)
+h2o.mse(perf_test_2)
+
+# Get the CV models from the `nn2` object
+cv_models2 <- sapply(nn2@model$cross_validation_models, function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models2[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+## Model 3
+
+```{r}
+#model 3
+perf_valid_3 <- h2o.performance(nn3, newdata = valid)
+perf_test_3 <- h2o.performance(nn3, newdata = test)
+h2o.mse(perf_valid_3)
+h2o.mse(perf_test_3)
+
+# Get the CV models from the `nn3` object
+cv_models3 <- sapply(nn3@model$cross_validation_models, function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models3[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+## Model 4
+
+```{r}
+#model 4
+perf_valid_4 <- h2o.performance(nn4, newdata = valid)
+perf_test_4 <- h2o.performance(nn4, newdata = test)
+h2o.mse(perf_valid_4)
+h2o.mse(perf_test_4)
+
+# Get the CV models from the `nn4` object
+cv_models4 <- sapply(nn4@model$cross_validation_models, function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models4[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+## Model 5
+
+```{r}
+#model 5
+perf_valid_5 <- h2o.performance(nn5, newdata = valid)
+perf_test_5 <- h2o.performance(nn5, newdata = test)
+h2o.mse(perf_valid_5)
+h2o.mse(perf_test_5)
+
+# Get the CV models from the `nn5` object
+cv_models5 <- sapply(nn5@model$cross_validation_models, function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models5[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+## Model 6
+
+```{r}
+#model 6
+perf_valid_6 <- h2o.performance(nn6, newdata = valid)
+perf_test_6 <- h2o.performance(nn6, newdata = test)
+h2o.mse(perf_valid_6)
+h2o.mse(perf_test_6)
+
+# Get the CV models from the `nn5` object
+cv_models6 <- sapply(nn6@model$cross_validation_models, function(i) h2o.getModel(i$name))
+
+# Plot the scoring history over time
+plot(cv_models6[[1]], 
+     timestep = "epochs", 
+     metric = "classification_error")
+```
+
+# Tuning the model
+
+```{r}
+activation_opt <- c("Tanh", "TanhWithDropout", "Rectifier", "RectifierWithDropout",
+                "Maxout", "MaxoutWithDropout")
+
+l1_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01, 0.1)
+l2_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01, 0.1)
+
+hyper_params <- list(activation = activation_opt, l1 = l1_opt, l2 = l2_opt)
+search_criteria <- list(strategy = "RandomDiscrete", max_runtime_secs = 600, 
+                        stopping_metric = "misclassification", stopping_tolerance = 0.001,
+                        stopping_rounds = 10)
+
+nn_grid <- h2o.grid("deeplearning",
+                    y = "music_genre",
+                    grid_id = "nn_grid",
+                    training_frame = train,
+                    seed = 12345,
+                    hidden = c(150,150,150),
+                    hyper_params = hyper_params,
+                    search_criteria = search_criteria)
+
+# Strategy examples below: list(strategy = "RandomDiscrete", max_runtime_secs = 600, max_models = 100, stopping_metric = "AUTO", stopping_tolerance = 0.00001, stopping_rounds = 5, seed = 123456) or list(strategy = "RandomDiscrete", max_models = 42, max_runtime_secs = 28800) or list(strategy = "RandomDiscrete", stopping_metric = "AUTO", stopping_tolerance = 0.001, stopping_rounds = 10) or list(strategy = "RandomDiscrete", stopping_metric = "misclassification", stopping_tolerance = 0.00001, stopping_rounds = 5).
+```
+
+```{r}
+dl_gridperf <- h2o.getGrid(grid_id = "nn_grid", 
+                           sort_by = "accuracy", 
+                           decreasing = TRUE)
+print(dl_gridperf)
+```
+
+```{r}
+best_dl_model_id <- dl_gridperf@model_ids[[1]]
+best_dl <- h2o.getModel(best_dl_model_id)
+```
+
+```{r}
+best_dl_perf <- h2o.performance(model = best_dl, newdata = test)
+h2o.mse(best_dl_perf)
+
+best_dl_perf_valid <- h2o.performance(model = best_dl, newdata = valid)
+h2o.mse(best_dl_perf_valid)
+```
+
+
