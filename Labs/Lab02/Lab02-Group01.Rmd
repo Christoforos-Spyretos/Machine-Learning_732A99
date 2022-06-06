@@ -21,7 +21,7 @@ knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
 ## Reading & Splitting the data.
 
 ```{r}
-data <- read.csv("files/tecator.csv")
+data <- read.csv("tecator.csv")
 
 n=dim(data)[1]
 set.seed(12345) 
@@ -148,7 +148,7 @@ The plot illustrates that the model predictions corresponding to optimal lambda 
 We start with reading in the data set. Additionally, we change all character variables to factor variables and split the dataset into training, validation and test dataset. We noticed that the dataset description and the real dataset are inconsistent. For example, the description says that we should have the weekday (Monday, Tuesday,...), but in our dataset, we have the day of the month (1,..31). We are going to work with the dataset we have but keep some possible interpretation issues in mind.
 
 ```{r}
-bank <- read.csv2("files/bank-full.csv", header = TRUE)
+bank <- read.csv2("bank-full.csv", header = TRUE)
 
 #remove duration
 df <- bank[,-12]
@@ -426,7 +426,7 @@ As we have already mentioned earlier, we have an imbalanced problem here. The pr
 The *communities* dataset has 1994 observations on 101 variables. It combines socio-economic data from multiple sources in the United States between 1990 and 1995.
 
 ```{r}
-df <- read.csv("files/communities.csv")
+df <- read.csv("communities.csv")
 ViolentCrimesPerPop <- df$ViolentCrimesPerPop
 resp_ind <- which(colnames(df) == "ViolentCrimesPerPop")
 ```
